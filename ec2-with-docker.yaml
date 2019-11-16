@@ -1,0 +1,62 @@
+Description: This template deploys an EC2 instance to the selected Subnet and Security Goup. 
+  The Java 8 and Docker are installed at the startup
+
+Parameters:
+  Subnet:
+    Description: Please enter the Subnet Id for the instance
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: must be the id of an existing Subnet.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    AllowedValues:
+      - t2.small
+      - t3.small
+      - t3.medium
+    ConstraintDescription: must be a valid EC2 instance type.
+  EC2SecurityGroup:
+    Description: Please enter the Security Group Id for the instance
+    Type: 'AWS::EC2::SecurityGroup::Id'
+    ConstraintDescription: must be the id of an existing Security Group
+  # Tags
+  EnvironmentType:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    Default: LAB
+
+Resources:
+  # EC2
+  EC2AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      KeyName: !Ref KeyName
+      ImageId: ami-04b9e92b5572fa0d1 # Ubuntu Server 18.04 LTS (HVM), SSD Volume Type (64-bit x86) us-east-1
+      SubnetId: !Ref Subnet
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -xe
+            # install docker
+            apt-get update && sudo apt-get install -y docker.io
+            # install Java
+            apt-get install -y openjdk-8-jdk
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-${EnvironmentType}-use1
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+
+Outputs:
+  EC2AppInstancePrivateIp:
+    Description: The private ip of this instance
+    Value: !GetAtt EC2AppInstance.PrivateIp
+  EC2AppInstancePublicIp:
+    Description: The public ip of this instance
+    Value: !GetAtt EC2AppInstance.PublicIp
