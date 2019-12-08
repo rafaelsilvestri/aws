@@ -1,0 +1,113 @@
+Description:  This template deploys a single Master RDS instance of a Postgres across two different AZ.
+
+Parameters:
+  VPC:
+    Description: Please enter the VPC
+    Type: 'AWS::EC2::VPC::Id'
+  VPCCIDR:
+    Description: VPC CIDR Block (eg 10.0.0.0/16). Must match with the selected VPC
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+    Default: 10.0.0.0/16
+    Type: String
+  PrivateSubnet1:
+    Description: Please enter the first Subnet Id
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: must be the id of an existing Subnet.
+  PrivateSubnet2:
+    Description: Please enter the first Subnet Id
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: must be the id of an existing Subnet.
+  DBInstanceIdentifier:
+    Type: String
+    Default: rcs-postgres-LAB
+  DBName:
+    Type: String
+    Default: "rcs_db"
+  DBUser:
+    Type: String
+    Default: "postgres"
+  DBPassword:
+    Type: String
+    Default: "password"
+    NoEcho: True
+  # Tag values
+  EnvironmentType:
+    Description: Environment Identifier
+    Type: String
+    AllowedValues:
+      - PRODUCTION
+      - PRE-PRODUCTION
+      - QUALITY ASSURANCE
+      - INTEGRATION TESTING
+      - DEVELOPMENT
+      - LAB
+
+Resources:  
+  # RDS Security Group
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${AWS::StackName}-sg-${EnvironmentType}
+      GroupDescription: Authorize inbound traffic from the public subnet over port 5432.
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref VPCCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-dbsg-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+    
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DBSubnetGroup for RDS instances
+      SubnetIds: 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-DBSubnet-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+          
+  DBMasterInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier:
+        Ref: DBInstanceIdentifier
+      DBName:
+        Ref: DBName
+      AllocatedStorage: 5
+      DBInstanceClass: db.t3.medium
+      StorageType: gp2
+      Engine: postgres
+      EngineVersion: 11.5
+      Port: 5432
+      MasterUsername:
+        Ref: DBUser
+      MasterUserPassword:
+        Ref: DBPassword
+      PubliclyAccessible: false
+      VPCSecurityGroups: 
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-master-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+
+Outputs:
+  
+  DBEndpointAddress:
+    Description: The RDS Master Instance endpoint
+    Value: !GetAtt DBMasterInstance.Endpoint.Address
+
+  DBEndpointPort:
+    Description: The RDS Master Instance port
+    Value: !GetAtt DBMasterInstance.Endpoint.Port

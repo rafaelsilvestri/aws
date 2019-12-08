@@ -1,0 +1,106 @@
+Description:  This template deploys a single EC2 instance and setup the Jenkins behind the Nginx.
+
+Parameters:
+  Subnet:
+    Description: Please enter the Subnet Id for the instance
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: must be the id of an existing Subnet.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    AllowedValues:
+      - t2.small
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+    ConstraintDescription: must be a valid EC2 instance type.
+  EC2SecurityGroup:
+    Description: Please enter the Security Group Id for the instance
+    Type: 'AWS::EC2::SecurityGroup::Id'
+    ConstraintDescription: must be the id of an existing Security Group
+  # Tag values
+  EnvironmentType:
+    Description: Environment Identifier
+    Type: String
+    AllowedValues:
+      - PRODUCTION
+      - PRE-PRODUCTION
+      - QUALITY ASSURANCE
+      - INTEGRATION TESTING
+      - DEVELOPMENT
+      - LAB
+
+Resources:  
+
+  EC2JenkinsInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      KeyName: !Ref KeyName
+      ImageId: ami-04b9e92b5572fa0d1 # Ubuntu Server 18.04 LTS (HVM), SSD Volume Type (64-bit x86) us-east-1
+      SubnetId: !Ref Subnet
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            # install docker
+            apt-get update && sudo apt-get install -y docker.io
+            # install Java
+            apt-get install -y openjdk-8-jdk
+            # install Jenkins
+            wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
+            sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+            apt update
+            apt install -y jenkins
+            systemctl start jenkins
+            # add jenkins user to sudoers
+            echo 'jenkins    ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+            # install nginx
+            apt install -y nginx
+            # configure the routes
+            cat > /etc/nginx/sites-available/default <<EOL
+            server {
+              listen 80 default_server;
+              listen [::]:80 default_server;
+
+              root /var/www/html;
+
+              index index.html index.htm index.nginx-debian.html;
+
+              server_name _;
+
+              location / {
+                proxy_pass http://127.0.0.1:8080;
+              }
+
+              location /jenkins {
+                proxy_pass http://127.0.0.1:8080/;
+              }
+              
+              location /static {
+                alias	/var/www/content/;
+                autoindex on;
+              }
+            }
+            EOL
+            nginx -s reload
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+
+Outputs:
+  EC2JenkinsInstancePrivateIp:
+    Description: The private ip of this instance
+    Value: !GetAtt EC2JenkinsInstance.PrivateIp
+  EC2JenkinsInstancePublicIp:
+    Description: The public ip of this instance
+    Value: !GetAtt EC2JenkinsInstance.PublicIp
