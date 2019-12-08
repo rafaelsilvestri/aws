@@ -17,16 +17,24 @@ Parameters:
       - t2.small
       - t3.small
       - t3.medium
+      - t3.large
+      - t3.xlarge
     ConstraintDescription: must be a valid EC2 instance type.
   EC2SecurityGroup:
     Description: Please enter the Security Group Id for the instance
     Type: 'AWS::EC2::SecurityGroup::Id'
     ConstraintDescription: must be the id of an existing Security Group
-  # Tags
+  # Tag values
   EnvironmentType:
-    Description: An environment name that will be prefixed to resource names
+    Description: Environment Identifier
     Type: String
-    Default: LAB
+    AllowedValues:
+      - PRODUCTION
+      - PRE-PRODUCTION
+      - QUALITY ASSURANCE
+      - INTEGRATION TESTING
+      - DEVELOPMENT
+      - LAB
 
 Resources:
   # EC2

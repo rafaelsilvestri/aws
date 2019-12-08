@@ -19,11 +19,17 @@ Parameters:
     Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
     Type: String
     Default: 10.0.11.0/24
-  # Tags
+  # Tag values
   EnvironmentType:
-    Description: An environment name that will be prefixed to resource names
+    Description: Environment Identifier
     Type: String
-    Default: LAB
+    AllowedValues:
+      - PRODUCTION
+      - PRE-PRODUCTION
+      - QUALITY ASSURANCE
+      - INTEGRATION TESTING
+      - DEVELOPMENT
+      - LAB
 
 Resources:
   VPC:
