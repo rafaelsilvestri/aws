@@ -11,5 +11,5 @@ aws cloudformation create-stack --stack-name MyNetworkStack --template-body file
 
 ## References
 
-https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html
+https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html  
 https://github.com/awsdocs/aws-cloudformation-user-guide
