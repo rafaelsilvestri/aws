@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Metadata:
+  License: Apache-2.0
+Description: 'AWS CloudFormation Sample Template AutoScalingMultiAZ:
+  Create a multi-az Auto Scaled EC2 instances, no rollup or rolldown is configured.' 
+Parameters:
+  AMI:
+    Description: ID of the AMI used for the ASG
+    Type: String
+    Default: ami-0dba2cb6798deb6d8
+  OS:
+    Description: Operating system used in the choosed AMI
+    Type: String
+    Default: linux
+    AllowedValues: [linux, windows]
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t3.nano
+    AllowedValues: [
+      t3.nano, 
+      t3.small, 
+      t3.medium, 
+      t3.large, 
+      t3.xlarge,
+      m5.nano, 
+      m5.small, 
+      m5.medium, 
+      m5.large, 
+      m5.xlarge
+    ]
+    ConstraintDescription: must be a valid EC2 instance type.
+  ASGDesiredCapacity:
+      Description: The desired/max number of instances to autoscale spin up
+      Type: String
+      Default: 2
+  InstanceSubnetAZ1:
+    Description: Please enter the Subnet Id in AZ1 for the instance 
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: must be the id of an existing Subnet.
+  InstanceSubnetAZ2:
+    Description: Please enter the Subnet Id in AZ2 for the instance 
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: must be the id of an existing Subnet.
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  InstanceSecurityGroup:
+    Description: Please enter the Security Group for the instance
+    Type: 'AWS::EC2::SecurityGroup::Id'
+    ConstraintDescription: must be an existing Security Group
+  # Tag values
+  EnvironmentType:
+    Description: Environment Identifier
+    Type: String
+    Default: DEVELOPMENT
+    AllowedValues:
+      - PRODUCTION
+      - PRE-PRODUCTION
+      - DEVELOPMENT
+  AssetId:
+    Description: The asset identifier that the stack belongs to
+    Type: String
+    Default: poc
+    
+Conditions:
+  isLinux: !Equals [ !Ref OS, 'linux']
+  isWindows: !Equals [ !Ref OS, 'windows']
+
+Resources:
+
+  # use LT instead of LC
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      LaunchConfigurationName: !Sub ${AWS::StackName}-LC-${EnvironmentType}
+      ImageId: !Ref AMI
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      InstanceType: !Ref InstanceType
+      #TODO: check OS and decide to execute bash or powershell  
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -xe
+            # download dummy file from s3
+            # use this method to download and run bootstrap script
+            aws s3 cp s3://rafaelsilvestri.github.com-private-us-east-1/dummy.txt /usr/local/dummy.txt
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub ${AWS::StackName}-ASG-${EnvironmentType}
+      VPCZoneIdentifier:
+        - !Ref InstanceSubnetAZ1
+        - !Ref InstanceSubnetAZ2
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MinSize: '0'
+      MaxSize: !Ref ASGDesiredCapacity
+      DesiredCapacity: !Ref ASGDesiredCapacity
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ASG-${EnvironmentType}
+          PropagateAtLaunch: "true"
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+          PropagateAtLaunch: "true"
+        - Key: asset-id
+          Value: !Ref AssetId
+          PropagateAtLaunch: "true"
+
+Outputs:
+  AutoScalingGroup:
+    Description: The newly created ASG
+    Value: !Ref AutoScalingGroup

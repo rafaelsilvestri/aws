@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+ 
+    parameters {
+        string(name: 'StackName', defaultValue: '', description: 'The stack name')
+    }
+
+    environment {
+        AWS_CREDENTIALS = credentials('aws-key')
+    }
+
+    stages {
+       
+        stage("Deleting Stack") {
+            steps {
+ 			    script {
+                    if (params.StackName == '') {
+                        currentBuild.result = 'ABORTED'
+                        error('StackName must be set')
+                    }
+
+                    sh "echo Starting AWS CLI"
+                    sh """#!/bin/bash
+                        export AWS_ACCESS_KEY_ID=\$AWS_CREDENTIALS_USR
+                        export AWS_SECRET_ACCESS_KEY=\$AWS_CREDENTIALS_PSW
+                        export AWS_DEFAULT_REGION=us-east-1
+                        export AWS_DEFAULT_OUTPUT=json
+
+                        # Delete CFN Stack
+                        echo "Deleling Stack"
+                        aws cloudformation delete-stack --stack-name ${params.StackName}
+                            
+                        # wait until the command is complete
+                        aws cloudformation wait stack-delete-complete --stack-name ${params.StackName}
+                    """
+                }
+            }
+ 		}        
+    }
+	post {
+		always { 
+        	cleanWs()
+    	}
+	}
+}

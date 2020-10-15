@@ -1,0 +1,220 @@
+Description:  This template deploys a VPC, with a public and private subnets spread
+  across two Availability Zones. It also deploys an Internet Gateway, with a default
+  route on the public subnets.
+
+Parameters:
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.0.0.0/16
+  PublicSubnetAZ1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 10.0.1.0/24
+  PublicSubnetAZ2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 10.0.2.0/24
+  PrivateSubnetAppAZ1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet (app) in the first Availability Zone
+    Type: String
+    Default: 10.0.10.0/24
+  PrivateSubnetAppAZ2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet (app) in the second Availability Zone
+    Type: String
+    Default: 10.0.11.0/24
+  PrivateSubnetDataAZ1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet (data) in the first Availability Zone
+    Type: String
+    Default: 10.0.20.0/24
+  PrivateSubnetDataAZ2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet (data) in the second Availability Zone
+    Type: String
+    Default: 10.0.21.0/24
+  # Tag values
+  EnvironmentType:
+    Description: Environment Identifier
+    Type: String
+    AllowedValues:
+      - PRODUCTION
+      - PRE-PRODUCTION
+      - DEVELOPMENT
+  AssetId:
+    Description: The asset identifier that the stack belongs to
+    Type: String
+    Default: poc
+
+Resources:
+  # Virtual Private Cloud
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-vpc-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+ 
+  # Subnets
+  PublicSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnetAZ1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-az1-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+
+  PublicSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnetAZ2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-az2-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+
+  PrivateSubnetAppAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnetAppAZ1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-app-az1-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+
+  PrivateSubnetAppAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnetAppAZ2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-app-az2-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+          
+  PrivateSubnetDataAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnetDataAZ1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-data-az1-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+
+  PrivateSubnetDataAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnetDataAZ2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-data-az2-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-internetgateway-${EnvironmentType}
+        - Key: environment-type  
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # Add a custom route table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-routetable-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+        - Key: asset-id
+          Value: !Ref AssetId
+          
+  # Add a route to the route table for the Internet gateway.
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetAZ1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ1
+
+  PublicSubnetAZ2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ2
+
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+    # export command is useful if you want to use this value in another stack formation
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCID"
+
+  PublicSubnetAZ1:
+    Description: A reference to the public subnet in the 1st Availability Zone
+    Value: !Ref PublicSubnetAZ1
+
+  PublicSubnetAZ2:
+    Description: A reference to the public subnet in the 2st Availability Zone
+    Value: !Ref PublicSubnetAZ2

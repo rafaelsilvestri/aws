@@ -1,0 +1,104 @@
+pipeline {
+    agent any
+ 
+    parameters {
+        string(name: 'StackName', defaultValue: '', description: 'The stack name')
+        string(name: 'AMI', defaultValue: 'ami-0dba2cb6798deb6d8', description: 'The ID of base AMI')
+        choice(name: 'OS', choices: ['linux', 'windows'], description: 'The Operational System used by the AMI')
+        choice(name: 'InstanceType', choices: ['t3.nano', 't3.small','t3.medium'], description: '')
+        string(name: 'DesiredCapacity', defaultValue: '2', description: 'How many instances do you want to spin up?')
+    }
+
+    environment {
+        AWS_CREDENTIALS = credentials('aws-key')
+    }
+
+    stages {
+       
+        stage("Describe EC2") {
+            steps {
+ 			    script {
+                    if (params.StackName == '') {
+                        currentBuild.result = 'ABORTED'
+                        error('StackName must be set')
+                    }
+
+                    sh "echo Starting AWS CLI"
+                    sh """#!/bin/bash
+                        export AWS_ACCESS_KEY_ID=\$AWS_CREDENTIALS_USR
+                        export AWS_SECRET_ACCESS_KEY=\$AWS_CREDENTIALS_PSW
+                        export AWS_DEFAULT_REGION=us-east-1
+                        export AWS_DEFAULT_OUTPUT=json
+
+                        SUBNET_AZ1=subnet-0e2feff76cceceb05 #us-east-1a
+                        SUBNET_AZ2=subnet-00b475d30aed2e22b #us-east-1b
+                        KEY_NAME='ec2-default'
+                        SSH_LOCATION="\$(dig @ns1-1.akamaitech.net ANY whoami.akamai.net +short)/32"
+                        SG=sg-055bca2b68c0209c6
+                        ENV_TYPE='DEVELOPMENT'
+                        
+                        CFN_UPDATING=true
+                        while \$CFN_UPDATING; do
+                            CFN_STATUS=\$(aws --output text cloudformation describe-stacks --stack-name  ${params.StackName} --query 'Stacks[0].StackStatus')
+                            echo "Status \$CFN_STATUS" 
+                            if [[ -z "\$CFN_STATUS" ]]; then
+                                echo "create-stack"
+                                CFN_COMMAND='create-stack'
+                                CFN_WAITING_FOR='stack-create-complete'
+                                CFN_UPDATING=false
+                            else
+                                case "\$CFN_STATUS" in
+                                    CREATE_COMPLETE|UPDATE_COMPLETE|ROLLBACK_COMPLETE|UPDATE_ROLLBACK_COMPLETE)
+                                        echo "Status: \$CFN_STATUS"
+                                        CFN_COMMAND='update-stack'
+                                        CFN_WAITING_FOR='stack-update-complete'
+                                        CFN_UPDATING=false
+                                        ;;
+                                    CREATE_IN_PROGRESS|DELETE_IN_PROGRESS|ROLLBACK_IN_PROGRESS|UPDATE_COMPLETE_CLEANUP_IN_PROGRESS|UPDATE_IN_PROGRESS|UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS|UPDATE_ROLLBACK_IN_PROGRESS)
+                                        echo "Status: \$CFN_STATUS"
+                                        sleep 5
+                                        ;;
+                                    CREATE_FAILED|DELETE_FAILED|ROLLBACK_FAILED|UPDATE_ROLLBACK_FAILED|DELETE_COMPLETE)
+                                        echo "Status: \$CFN_STATUS"
+                                        exit 1
+                                esac
+                            fi
+                        done
+
+                        # Launching CF Stack
+                        echo "Lauching Stack"
+                        aws cloudformation \$CFN_COMMAND --stack-name "${params.StackName}" --template-url https://s3.amazonaws.com/rafaelsilvestri.github.com-private-us-east-1/cfn/cfn-asg-template.yaml \
+                            --parameters \
+                            ParameterKey=AMI,ParameterValue=${params.AMI} \
+                            ParameterKey=OS,ParameterValue=${params.OS} \
+                            ParameterKey=InstanceType,ParameterValue=${params.InstanceType} \
+                            ParameterKey=ASGDesiredCapacity,ParameterValue=${params.DesiredCapacity} \
+                            ParameterKey=InstanceSubnetAZ1,ParameterValue=\$SUBNET_AZ1 \
+                            ParameterKey=InstanceSubnetAZ2,ParameterValue=\$SUBNET_AZ2 \
+                            ParameterKey=KeyName,ParameterValue=\$KEY_NAME \
+                            ParameterKey=SSHLocation,ParameterValue=\$SSH_LOCATION \
+                            ParameterKey=InstanceSecurityGroup,ParameterValue=\$SG \
+                            ParameterKey=EnvironmentType,ParameterValue=\$ENV_TYPE 
+
+                        # wait until the command is complete
+                        aws cloudformation wait \$CFN_WAITING_FOR --stack-name ${params.StackName}
+
+                        CFN_STATUS=$(aws --output text cloudformation describe-stacks --stack-name  ${params.StackName} --query 'Stacks[0].StackStatus')
+
+
+                        # Display Output
+                        echo "Outputs:"
+                        aws cloudformation describe-stacks --stack-name ${params.StackName} --query 'Stacks[0].Outputs'
+                    """
+
+                    //#TODO: check the status of CFN and set build as fail in case of error
+                }
+            }
+ 		}        
+    }
+	post {
+		always { 
+        	cleanWs()
+    	}
+	}
+}
