@@ -10,6 +10,7 @@ TDB
 
 ![](diagram.png)
 
-
+## References
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet-requests.html#spot-fleet-service-linked-role
 
 

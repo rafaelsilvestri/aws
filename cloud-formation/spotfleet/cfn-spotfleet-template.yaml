@@ -13,13 +13,13 @@ Resources:
         Types:
           - REGIONAL
         #  - EDGE
-      Name: lambda-api
+      Name: spotfleet-api
 
   ApiGatewayResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: 'lambda'
+      PathPart: 'spotfleet'
       RestApiId: !Ref ApiGatewayRestApi
 
   ApiGatewayMethod:
@@ -36,7 +36,7 @@ Resources:
         TimeoutInMillis: 29000
         Type: AWS_PROXY
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
-      OperationName: 'lambda'
+      OperationName: 'spotfleet'
       ResourceId: !Ref ApiGatewayResource
       RestApiId: !Ref ApiGatewayRestApi
 
@@ -51,9 +51,9 @@ Resources:
     Type: AWS::ApiGateway::Stage
     Properties:
       DeploymentId: !Ref ApiGatewayDeployment
-      Description: Lambda API Stage v0
+      Description: Lambda API Stage v1
       RestApiId: !Ref ApiGatewayRestApi
-      StageName: 'v0'
+      StageName: 'v1'
 
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
@@ -89,19 +89,11 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        ZipFile: |
-          def handler(event, context):
-            response = {
-              'isBase64Encoded': False,
-              'statusCode': 200,
-              'headers': {},
-              'multiValueHeaders': {},
-              'body': 'Hello, World!'
-            }
-            return response
-      Description: AWS Lambda function
-      FunctionName: 'lambda-function'
-      Handler: index.handler
+          S3Bucket: 'rafaelsilvestri.github.com-private-us-east-1'
+          S3Key: 'functions/RequestSpotFleetFunction'
+      Description: AWS Lambda function to request a fleet of spot instances
+      FunctionName: 'RequestSpotFleet'
+      Handler: RequestSpotFleet.lambda_handler
       MemorySize: 256
       Role: !GetAtt LambdaIamRole.Arn
       Runtime: python3.7
@@ -120,7 +112,7 @@ Resources:
             Action:
               - 'sts:AssumeRole'
       Path: '/'
-  
+      
 Outputs:
   apiGatewayInvokeURL:
-    Value: !Sub https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}
+    Value: !Sub https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}/spotfleet

@@ -9,15 +9,15 @@ logger = logging.getLogger()
 request = {
   "AllocationStrategy":"capacityOptimized",  # possible values -> "capacityOptimized" | "lowestPrice" | "diversified"
   "Type": "request", 
-  "IamFleetRole": "arn:aws:iam::244740733614:role/aws-ec2-spot-fleet-tagging-role",
+  "IamFleetRole": "arn:aws:iam::268425436352:role/aws-ec2-spot-fleet-tagging-role",
   "LaunchSpecifications": []
 }
 
 eventParam = {
     "ClientToken": "id-para-rodada-de-testes",
-    "TargetCapacity": 20,
-    "ImageId": "ami-04d29b6f966df1537",
-    "SecurityGroupId": "sg-0fff0f21d99f9fdd6",
+    "TargetCapacity": 3,
+    "ImageId": "ami-07817f5d0e3866d32",
+    "SecurityGroupId": "sg-0201112bd17ffe744",
     "MinvCPU": 1,
     "MaxvCPU": 2
 }
