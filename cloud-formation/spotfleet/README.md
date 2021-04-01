@@ -12,5 +12,5 @@ TDB
 
 ## References
 https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet-requests.html#spot-fleet-service-linked-role
-
+https://docs.aws.amazon.com/cli/latest/reference/ec2/request-spot-fleet.html
 

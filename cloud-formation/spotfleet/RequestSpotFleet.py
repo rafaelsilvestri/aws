@@ -17,7 +17,8 @@ eventParam = {
     "ClientToken": "id-para-rodada-de-testes",
     "TargetCapacity": 3,
     "ImageId": "ami-07817f5d0e3866d32",
-    "SecurityGroupId": "sg-0201112bd17ffe744",
+    "SecurityGroupId": "sg-062f773330217e4a4",
+    "SubnetId": "subnet-0d4a5ba492ad22c1e",
     "MinvCPU": 1,
     "MaxvCPU": 2
 }
@@ -52,8 +53,11 @@ def GetSpotRequestParam():
         request["LaunchSpecifications"].append( {
           "SecurityGroups": [{"GroupId": eventParam["SecurityGroupId"]}],
           "ImageId": eventParam["ImageId"],
+          "SubnetId": eventParam["SubnetId"],
           "InstanceType": instanceType
         })
+    print("RequestFleet")
+    print(request)
     return request
 
 

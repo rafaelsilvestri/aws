@@ -142,7 +142,14 @@ Resources:
                   - ec2:*
                   - logs:*
                 Resource: "*"
-      
+        - PolicyName: Admin
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action: "*"
+                Resource: "*"
+
 Outputs:
   apiGatewayInvokeURL:
     Value: !Sub https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}/spotfleet
