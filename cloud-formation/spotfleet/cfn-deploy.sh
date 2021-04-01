@@ -1,17 +1,14 @@
 #!/bin/bash
 
-set -x
-
 CFN_STACK_NAME=RequestSpotFleetApi
+CFN_FILE_NAME=cfn-spotfleet-template.yaml
+
+#aws cloudformation validate-template --template-body file://$CFN_FILE_NAME
 
 aws cloudformation deploy \
     --stack-name $CFN_STACK_NAME \
-    --template-file cfn-spotfleet-template.yaml \
+    --template-file $CFN_FILE_NAME \
     --capabilities CAPABILITY_IAM
-
-
-# wait until the command is complete
-#aws cloudformation wait $CFN_WAITING_FOR --stack-name $CFN_STACK_NAME
 
 # Display Output
 echo "Outputs:"

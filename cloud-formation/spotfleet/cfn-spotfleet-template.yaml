@@ -37,6 +37,8 @@ Resources:
         Type: AWS_PROXY
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
       OperationName: 'spotfleet'
+      RequestModels:
+        'application/json' : !Ref ApiGatewayModel
       ResourceId: !Ref ApiGatewayResource
       RestApiId: !Ref ApiGatewayRestApi
 
@@ -45,7 +47,25 @@ Resources:
     Properties:
       ContentType: 'application/json'
       RestApiId: !Ref ApiGatewayRestApi
-      Schema: {}
+      Description: Define the payload for a request spot fleet
+      Name: RequestSpotInstanceModel
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        title: RequestSpotInstance
+        type: object
+        properties:
+          id:
+            type: integer
+          targetCapacity:
+            type: integer
+          ami:
+            type: string
+          securityGroupId:
+            type: string
+          minvCPU:
+            type: integer
+          maxvCPU:
+            type: integer
 
   ApiGatewayStage:
     Type: AWS::ApiGateway::Stage
@@ -112,6 +132,16 @@ Resources:
             Action:
               - 'sts:AssumeRole'
       Path: '/'
+      Policies:
+        - PolicyName: LambdaEc2Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - ec2:*
+                  - logs:*
+                Resource: "*"
       
 Outputs:
   apiGatewayInvokeURL:
