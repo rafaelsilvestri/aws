@@ -54,7 +54,7 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-vpc-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-vpc
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -70,7 +70,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-public-az1-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-subnet-public-az1
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -85,7 +85,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-public-az2-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-subnet-public-az2
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -100,7 +100,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-private-app-az1-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-subnet-private-app-az1
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -115,7 +115,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-private-app-az2-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-subnet-private-app-az2
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -130,7 +130,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-private-data-az1-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-subnet-private-data-az1
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -145,7 +145,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-private-data-az2-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-subnet-private-data-az2
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -157,7 +157,7 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-internetgateway-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-internetgateway
         - Key: environment-type  
           Value: !Ref EnvironmentType
         - Key: asset-id
@@ -176,7 +176,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-routetable-${EnvironmentType}
+          Value: !Sub ${AWS::StackName}-routetable
         - Key: environment-type
           Value: !Ref EnvironmentType
         - Key: asset-id

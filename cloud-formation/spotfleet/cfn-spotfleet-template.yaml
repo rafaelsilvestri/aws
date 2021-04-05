@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
-Description: AWS API Gateway with a Lambda Integration
+Description: AWS API Gateway with a Lambda Integration to Request a Spot Fleet
 
 Resources:
 
@@ -13,18 +13,19 @@ Resources:
         Types:
           - REGIONAL
         #  - EDGE
-      Name: spotfleet-api
+      Name: SpotFleetApi
 
   ApiGatewayResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
-      PathPart: 'spotfleet'
+      PathPart: 'fleet'
       RestApiId: !Ref ApiGatewayRestApi
 
   ApiGatewayMethod:
     Type: AWS::ApiGateway::Method
     Properties:
+      #ApiKeyRequired: true
       ApiKeyRequired: false
       AuthorizationType: NONE
       HttpMethod: POST
@@ -36,9 +37,7 @@ Resources:
         TimeoutInMillis: 29000
         Type: AWS_PROXY
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
-      OperationName: 'spotfleet'
-      RequestModels:
-        'application/json' : !Ref ApiGatewayModel
+      OperationName: 'fleet'
       ResourceId: !Ref ApiGatewayResource
       RestApiId: !Ref ApiGatewayRestApi
 
@@ -47,31 +46,13 @@ Resources:
     Properties:
       ContentType: 'application/json'
       RestApiId: !Ref ApiGatewayRestApi
-      Description: Define the payload for a request spot fleet
-      Name: RequestSpotInstanceModel
-      Schema:
-        $schema: 'http://json-schema.org/draft-04/schema#'
-        title: RequestSpotInstance
-        type: object
-        properties:
-          id:
-            type: integer
-          targetCapacity:
-            type: integer
-          ami:
-            type: string
-          securityGroupId:
-            type: string
-          minvCPU:
-            type: integer
-          maxvCPU:
-            type: integer
+      Schema: {}
 
   ApiGatewayStage:
     Type: AWS::ApiGateway::Stage
     Properties:
       DeploymentId: !Ref ApiGatewayDeployment
-      Description: Lambda API Stage v1
+      Description: Lambda API Stage v0
       RestApiId: !Ref ApiGatewayRestApi
       StageName: 'v1'
 
@@ -109,11 +90,19 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-          S3Bucket: 'rafaelsilvestri.github.com-private-us-east-1'
-          S3Key: 'functions/RequestSpotFleetFunction'
-      Description: AWS Lambda function to request a fleet of spot instances
-      FunctionName: 'RequestSpotFleet'
-      Handler: RequestSpotFleet.lambda_handler
+        ZipFile: |
+          def handler(event, context):
+            response = {
+              'isBase64Encoded': False,
+              'statusCode': 200,
+              'headers': {},
+              'multiValueHeaders': {},
+              'body': 'Hello, World!'
+            }
+            return response
+      Description: AWS Lambda function to request a Spot Fleet
+      FunctionName: 'request-spotfleet'
+      Handler: index.handler
       MemorySize: 256
       Role: !GetAtt LambdaIamRole.Arn
       Runtime: python3.7
@@ -132,24 +121,7 @@ Resources:
             Action:
               - 'sts:AssumeRole'
       Path: '/'
-      Policies:
-        - PolicyName: LambdaEc2Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: 'Allow'
-                Action:
-                  - ec2:*
-                  - logs:*
-                Resource: "*"
-        - PolicyName: Admin
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: 'Allow'
-                Action: "*"
-                Resource: "*"
-
+  
 Outputs:
-  apiGatewayInvokeURL:
-    Value: !Sub https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}/spotfleet
+  invokeURL:
+    Value: !Sub https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}

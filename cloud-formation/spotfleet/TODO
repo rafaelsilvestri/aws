@@ -1,2 +1,7 @@
-Add CloudWatch integration
-Deploy Lambda as code / cloudformation package
+Integrate to ApiGateway
+Deploy Lambda as code / cloudformation package SAM
+Run UserData script that:
+    Get instance meta-data 
+    Get instances tag, check for an specific tag
+    ping Aurora / insert id and ip address
+    sleep for a while and terminate after.

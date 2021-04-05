@@ -6,6 +6,18 @@ import botocore
 ec2 = boto3.client('ec2', 'us-east-1')
 logger = logging.getLogger()
 
+TagSpecifications = [
+    {
+        "ResourceType":"instance",
+        "Tags": [
+            {
+                "Key":"RequestSpotFleetPoc",
+                "Value":"999"
+            }
+        ]
+    }
+]
+
 request = {
   "AllocationStrategy":"capacityOptimized",  # possible values -> "capacityOptimized" | "lowestPrice" | "diversified"
   "Type": "request", 
@@ -14,11 +26,14 @@ request = {
 }
 
 eventParam = {
-    "ClientToken": "id-para-rodada-de-testes",
-    "TargetCapacity": 3,
-    "ImageId": "ami-07817f5d0e3866d32",
-    "SecurityGroupId": "sg-062f773330217e4a4",
-    "SubnetId": "subnet-0d4a5ba492ad22c1e",
+    "ClientToken": "PocClientToken", # identifier to ensure the idempotency of your listings
+    "TargetCapacity": 1,
+    "ImageId": "ami-0742b4e673072066f", # Amazon Linux 2
+    #"ImageId": "ami-07817f5d0e3866d32", # Windows 2019
+    "SecurityGroupId": "sg-073914865c4d9ac48",
+    "SubnetId": "subnet-071fa334308d3eab1", # public subnet to connect via ssh
+    #"SubnetId": "subnet-03faf608bcdbb05b7,subnet-0f8f70334cd62cd4b", # coma separeted list
+    "KeyName": "ec2-default",
     "MinvCPU": 1,
     "MaxvCPU": 2
 }
@@ -54,9 +69,11 @@ def GetSpotRequestParam():
           "SecurityGroups": [{"GroupId": eventParam["SecurityGroupId"]}],
           "ImageId": eventParam["ImageId"],
           "SubnetId": eventParam["SubnetId"],
-          "InstanceType": instanceType
+          "InstanceType": instanceType,
+          "KeyName": eventParam["KeyName"],
+          "TagSpecifications": TagSpecifications
         })
-    print("RequestFleet")
+    print("---RequestFleet---")
     print(request)
     return request
 
