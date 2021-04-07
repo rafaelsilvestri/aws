@@ -1,10 +1,22 @@
 import json
 import logging
 import datetime
+import base64
 import boto3
 import botocore
+
+__author__ = "Rafael Silvestri"
+__email__ = "rafaelcechinel@gmail.com"
+
+""" 
+    Lambda function to process requests from API Gateway and request a Spot Fleet
+"""
+
 ec2 = boto3.client('ec2', 'us-east-1')
 logger = logging.getLogger()
+
+#UserData = 'echo "Hello" > echo.txt && sudo shutdown -P +5'
+UserData = 'ZWNobyAiSGVsbG8iID4gZWNoby50eHQgJiYgc3VkbyBzaHV0ZG93biAtUCArNQ=='
 
 TagSpecifications = [
     {
@@ -18,30 +30,33 @@ TagSpecifications = [
     }
 ]
 
+# Define the default values for the RequestSpotFleet
 request = {
-  "AllocationStrategy":"capacityOptimized",  # possible values -> "capacityOptimized" | "lowestPrice" | "diversified"
+  "AllocationStrategy": "capacityOptimized",  # possible values -> "capacityOptimized" | "lowestPrice" | "diversified"
+  "InstanceInterruptionBehavior": "terminate",
   "Type": "request", 
   "IamFleetRole": "arn:aws:iam::268425436352:role/aws-ec2-spot-fleet-tagging-role",
   "LaunchSpecifications": []
 }
 
-eventParam = {
-    "ClientToken": "PocClientToken", # identifier to ensure the idempotency of your listings
-    "TargetCapacity": 1,
-    "ImageId": "ami-0742b4e673072066f", # Amazon Linux 2
-    #"ImageId": "ami-07817f5d0e3866d32", # Windows 2019
-    "SecurityGroupId": "sg-073914865c4d9ac48",
-    "SubnetId": "subnet-071fa334308d3eab1", # public subnet to connect via ssh
-    #"SubnetId": "subnet-03faf608bcdbb05b7,subnet-0f8f70334cd62cd4b", # coma separeted list
-    "KeyName": "ec2-default",
-    "MinvCPU": 1,
-    "MaxvCPU": 2
-}
+eventParam = None
 
 def lambda_handler(event, context):
+    global eventParam
+    path = event['path']
+
+    if 'body' in event and event['body'] is not None:
+        eventParam = json.loads(event['body'])
+        logger.info(eventParam)
+    else:
+        logger.fatal('Request body is required.')
+        return {
+            'statusCode': 500,
+            'body': 'Request body is required.'
+        }
+
     # Create the fleet.
     instancesTypes = GetSpotRequestParam()
-    #logger.fatal(instancesTypes)
     try:
         request = ec2.request_spot_fleet(SpotFleetRequestConfig=instancesTypes)
     except botocore.exceptions.ParamValidationError as err:
@@ -55,26 +70,28 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': request
     }
-    
 
 def GetSpotRequestParam():
-    global eventParam
+    #global eventParam
     global request
     request["TargetCapacity"] = eventParam["TargetCapacity"]
+    request["AllocationStrategy"] = eventParam["AllocationStrategy"]
+    request["ClientToken"] = eventParam["ClientToken"]
+
     insTypes = GetInstancesTypes(eventParam)
     print("Inatances Types")
     print(insTypes)
     for instanceType in insTypes:
         request["LaunchSpecifications"].append( {
-          "SecurityGroups": [{"GroupId": eventParam["SecurityGroupId"]}],
-          "ImageId": eventParam["ImageId"],
-          "SubnetId": eventParam["SubnetId"],
+          "SecurityGroups": [{"GroupId": "sg-073914865c4d9ac48"}],
+          "SubnetId": "subnet-071fa334308d3eab1", # public subnet to connect via ssh
+          #"SubnetId": "subnet-03faf608bcdbb05b7,subnet-0f8f70334cd62cd4b", # coma separeted list
+          "TagSpecifications": TagSpecifications,
+          "UserData": UserData,
           "InstanceType": instanceType,
-          "KeyName": eventParam["KeyName"],
-          "TagSpecifications": TagSpecifications
+          "ImageId": eventParam["ImageId"],
+          "KeyName": eventParam["KeyName"]
         })
-    print("---RequestFleet---")
-    print(request)
     return request
 
 
