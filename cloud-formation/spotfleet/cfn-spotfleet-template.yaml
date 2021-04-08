@@ -115,6 +115,9 @@ Resources:
       Code:
           S3Bucket: 'rafaelsilvestri.github.com-private-us-east-1'
           S3Key: 'functions/RequestSpotFleetFunction'
+      Environment:
+        Variables:
+          IAM_FLEET_ROLE: !GetAtt IamFleetRole.Arn
       Description: AWS Lambda function to request a fleet of spot instances
       FunctionName: 'RequestSpotFleet'
       Handler: RequestSpotFleet.lambda_handler
@@ -153,7 +156,23 @@ Resources:
               - Effect: 'Allow'
                 Action: "*"
                 Resource: "*"
-   
+  
+  IamFleetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'spotfleet.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'    
+      Path: '/'
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
+
   LogsLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

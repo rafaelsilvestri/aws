@@ -1,5 +1,5 @@
 {
-    "body": "{ \"ClientToken\": \"10\",\"TargetCapacity\": 2,\"ImageId\": \"ami-0742b4e673072066f\",\"MinvCPU\": 1,\"MaxvCPU\": 2,\"KeyName\":\"ec2-tr\",\"AllocationStrategy\":\"capacityOptimized\"}",
+    "body": "{ \"ClientToken\": \"10\",\"TargetCapacity\": 1,\"ImageId\": \"ami-0742b4e673072066f\",\"MinvCPU\": 1,\"MaxvCPU\": 2,\"KeyName\":\"ec2-tr\",\"AllocationStrategy\":\"capacityOptimized\"}",
     "resource": "/{proxy+}",
     "path": "/run",
     "httpMethod": "POST",

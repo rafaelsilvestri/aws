@@ -4,6 +4,7 @@ import datetime
 import base64
 import boto3
 import botocore
+import os
 
 __author__ = "Rafael Silvestri"
 __email__ = "rafaelcechinel@gmail.com"
@@ -15,7 +16,7 @@ __email__ = "rafaelcechinel@gmail.com"
 ec2 = boto3.client('ec2', 'us-east-1')
 logger = logging.getLogger()
 
-UserData = base64.b64encode(b'mkdir ~/userdata && echo "hello" > ~/userdata/echo.txt').decode("ascii")
+#availabilityZones="us-east-1a,us-east-1b"
 
 TagSpecifications = [
     {
@@ -24,6 +25,10 @@ TagSpecifications = [
             {
                 "Key":"RequestSpotFleetPoc",
                 "Value":"999"
+            },
+            {
+                "Key":"Name",
+                "Value":"Instance"
             }
         ]
     }
@@ -34,7 +39,7 @@ request = {
   "AllocationStrategy": "capacityOptimized",  # possible values -> "capacityOptimized" | "lowestPrice" | "diversified"
   "InstanceInterruptionBehavior": "terminate",
   "Type": "request", 
-  "IamFleetRole": "arn:aws:iam::268425436352:role/aws-ec2-spot-fleet-tagging-role",
+  #"IamFleetRole": "arn:aws:iam::268425436352:role/aws-ec2-spot-fleet-tagging-role",
   "LaunchSpecifications": []
 }
 
@@ -82,17 +87,22 @@ def GetSpotRequestParam():
     request["TargetCapacity"] = eventParam["TargetCapacity"]
     request["AllocationStrategy"] = eventParam["AllocationStrategy"]
     request["ClientToken"] = eventParam["ClientToken"]
+    request["IamFleetRole"] = os.environ["IAM_FLEET_ROLE"]
 
     insTypes = GetInstancesTypes(eventParam)
-    print("Inatances Types")
-    print(insTypes)
+    #print("Inatances Types")
+    #print(insTypes)
+    print(request)
     for instanceType in insTypes:
         request["LaunchSpecifications"].append( {
           "SecurityGroups": [{"GroupId": "sg-073914865c4d9ac48"}],
-          "SubnetId": "subnet-071fa334308d3eab1", # public subnet to connect via ssh
-          #"SubnetId": "subnet-03faf608bcdbb05b7,subnet-0f8f70334cd62cd4b", # coma separeted list
+          #"SubnetId": "subnet-071fa334308d3eab1", # public subnet to connect via ssh
+          "SubnetId": "subnet-071fa334308d3eab1,subnet-001c53aaf5ef0e437", # public subnet to connect via ssh
+          #"SubnetId": "subnet-03faf608bcdbb05b7,subnet-0f8f70334cd62cd4b", # private subnet
+          #"IamInstanceProfile": {"Name":"","Arn": ""}
+          #"Placement": {"AvailabilityZone": availabilityZones},
           "TagSpecifications": TagSpecifications,
-          "UserData": UserData,
+          "UserData": GetUserDataScript(eventParam),
           "InstanceType": instanceType,
           "ImageId": eventParam["ImageId"],
           "KeyName": eventParam["KeyName"]
@@ -136,6 +146,13 @@ def GetInstancesTypesFilter():
             "Values": ["spot"]
         }
     ]
+
+def GetUserDataScript(params):
+    clientToken = params["ClientToken"]
+    userData = f'''#!/bin/bash
+echo 'execution id {clientToken}' > /tmp/execution.txt'''
+    
+    return base64.b64encode(str.encode(userData)).decode("ascii")
 
 # convert datetime to json as default
 def default_converter(o):
