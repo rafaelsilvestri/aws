@@ -1,11 +1,9 @@
 {
-    "operation": "request | cancel",
-    "payload": {
-        "ClientToken": "id-para-rodada-de-testes",
-        "TargetCapacity": 20,
-        "ImageId": "ami-04d29b6f966df1537",
-        "SecurityGroupId": "sg-0fff0f21d99f9fdd6",
-        "MinvCPU": 1,
-        "MaxvCPU": 2
-    }
+    "ClientToken": "5",
+    "TargetCapacity": 1,
+    "ImageId": "ami-0742b4e673072066f",
+    "MinvCPU": 1,
+    "MaxvCPU": 2,
+    "KeyName":"ec2-default",
+    "AllocationStrategy":"capacityOptimized"
 }

@@ -15,7 +15,8 @@ __email__ = "rafaelcechinel@gmail.com"
 ec2 = boto3.client('ec2', 'us-east-1')
 logger = logging.getLogger()
 
-UserData = base64.b64encode(b'mkdir ~/userdata && echo "hello" > ~/userdata/echo.txt').decode("ascii")
+#UserData = 'echo "Hello" > echo.txt && sudo shutdown -P +5'
+UserData = 'ZWNobyAiSGVsbG8iID4gZWNoby50eHQgJiYgc3VkbyBzaHV0ZG93biAtUCArNQ=='
 
 TagSpecifications = [
     {
@@ -29,74 +30,77 @@ TagSpecifications = [
     }
 ]
 
-# Define the default values for the RequestSpotFleet
 request = {
-  "AllocationStrategy": "capacityOptimized",  # possible values -> "capacityOptimized" | "lowestPrice" | "diversified"
-  "InstanceInterruptionBehavior": "terminate",
+  "AllocationStrategy":"capacityOptimized",  # possible values -> "capacityOptimized" | "lowestPrice" | "diversified"
   "Type": "request", 
   "IamFleetRole": "arn:aws:iam::268425436352:role/aws-ec2-spot-fleet-tagging-role",
   "LaunchSpecifications": []
 }
 
-eventParam = None
+eventParam = {
+    "ClientToken": "PocClientToken", # identifier to ensure the idempotency of your listings
+    "TargetCapacity": 1,
+    "ImageId": "ami-0742b4e673072066f", # Amazon Linux 2
+    #"ImageId": "ami-07817f5d0e3866d32", # Windows 2019
+    "SecurityGroupId": "sg-073914865c4d9ac48",
+    "SubnetId": "subnet-071fa334308d3eab1", # public subnet to connect via ssh
+    #"SubnetId": "subnet-03faf608bcdbb05b7,subnet-0f8f70334cd62cd4b", # coma separeted list
+    "KeyName": "ec2-default",
+    "MinvCPU": 1,
+    "MaxvCPU": 2
+}
 
 def lambda_handler(event, context):
-    global eventParam
+    body = None
     path = event['path']
 
+    logger.info(path)
+
     if 'body' in event and event['body'] is not None:
-        eventParam = json.loads(event['body'])
-        logger.info(eventParam)
-    else:
-        logger.fatal('Request body is required.')
-        return {
-            'statusCode': 500,
-            'body': 'Request body is required.'
-        }
+        body = json.loads(event['body'])
+        print("Body")
+        print(body)
+    
+    logger.info(body)
 
     # Create the fleet.
     instancesTypes = GetSpotRequestParam()
+    #logger.fatal(instancesTypes)
     try:
         request = ec2.request_spot_fleet(SpotFleetRequestConfig=instancesTypes)
     except botocore.exceptions.ParamValidationError as err:
         logger.fatal('Bad parameters provided, cannot continue: %s', err)
-        return {
-            'statusCode': 400,
-            'body': 'Bad parameters provided.'
-        }
+        return
     except botocore.exceptions.ClientError as err:
         logger.fatal('Failed to request spot fleet, cannot continue: %s', err)
-        return {
-            'statusCode': 500,
-            'body': 'Failed to request spot fleet.'
-        }
+        return
 
     return {
         'statusCode': 200,
-        'body': json.dumps(request, default=default_converter)
+        'body': request
     }
+    
 
 def GetSpotRequestParam():
-    #global eventParam
+    global eventParam
     global request
     request["TargetCapacity"] = eventParam["TargetCapacity"]
-    request["AllocationStrategy"] = eventParam["AllocationStrategy"]
-    request["ClientToken"] = eventParam["ClientToken"]
-
+    request["InstanceInterruptionBehavior"] = 'terminate' 
     insTypes = GetInstancesTypes(eventParam)
     print("Inatances Types")
     print(insTypes)
     for instanceType in insTypes:
         request["LaunchSpecifications"].append( {
-          "SecurityGroups": [{"GroupId": "sg-073914865c4d9ac48"}],
-          "SubnetId": "subnet-071fa334308d3eab1", # public subnet to connect via ssh
-          #"SubnetId": "subnet-03faf608bcdbb05b7,subnet-0f8f70334cd62cd4b", # coma separeted list
-          "TagSpecifications": TagSpecifications,
+          "SecurityGroups": [{"GroupId": eventParam["SecurityGroupId"]}],
+          "ImageId": eventParam["ImageId"],
+          "SubnetId": eventParam["SubnetId"],
           "UserData": UserData,
           "InstanceType": instanceType,
-          "ImageId": eventParam["ImageId"],
-          "KeyName": eventParam["KeyName"]
+          "KeyName": eventParam["KeyName"],
+          "TagSpecifications": TagSpecifications
         })
+    print("---RequestFleet---")
+    print(request)
     return request
 
 
@@ -136,13 +140,4 @@ def GetInstancesTypesFilter():
             "Values": ["spot"]
         }
     ]
-
-# convert datetime to json as default
-def default_converter(o):
-    """
-    Default converter to support custom conversion for objects that cannot be converted by default using json module
-    :param o: object to be converted
-    :return: a converted object
-    """
-    if isinstance(o, datetime.datetime):
-        return o.__str__()
+    
