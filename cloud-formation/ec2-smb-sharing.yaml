@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description:  This template deploys a single EC2 instance and setup the SMB to share a folder.
+
+Parameters:
+  Subnet:
+    Description: Please enter the Subnet Id for the instance
+    Type: 'AWS::EC2::Subnet::Id'
+    ConstraintDescription: must be the id of an existing Subnet.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    AllowedValues:
+      - t2.small
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+    ConstraintDescription: must be a valid EC2 instance type.
+  EC2SecurityGroup:
+    Description: Please enter the Security Group Id for the instance
+    Type: 'AWS::EC2::SecurityGroup::Id'
+    ConstraintDescription: must be the id of an existing Security Group
+
+  AMI:
+    Description: The AMI ID used to spin up the instance.
+    Type: String
+    Default: ami-04b9e92b5572fa0d1 # Ubuntu Server 18.04 LTS (HVM), SSD Volume Type (64-bit x86) us-east-1
+  
+  # Tag values
+  EnvironmentType:
+    Description: Environment Identifier
+    Type: String
+    Default: LAB
+    AllowedValues:
+      - PRODUCTION
+      - PRE-PRODUCTION
+      - QUALITY ASSURANCE
+      - INTEGRATION TESTING
+      - DEVELOPMENT
+      - LAB
+
+Resources:  
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      KeyName: !Ref KeyName
+      ImageId: !Ref AMI
+      SubnetId: !Ref Subnet
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+
+            # Setup Samba/SMB
+            sudo apt-get install -y samba
+            # Create a new user and its home directory
+            sudo useradd -m -s /usr/sbin/nologin bar
+            # configure a username and password that will be used to access the share:
+            (echo bar; echo bar) | sudo smbpasswd -s -a foo
+            # Create the root shared folder and change the owner
+            sudo mkdir /home/foo/Shared
+            sudo chown -R foo:foo /home/foo/Shared
+
+            # Configure Samba
+            # Below lines append to the end of /etc/samba/smb.conf
+            echo '# Custom SMB config' >> /etc/samba/smb.conf
+            echo '[Shared]' >> /etc/samba/smb.conf
+            echo 'path = /home/foo/Shared' >> /etc/samba/smb.conf
+            echo 'available = yes' >> /etc/samba/smb.conf 
+            echo 'valid users = foo' >> /etc/samba/smb.conf 
+            echo 'read only = no' >> /etc/samba/smb.conf 
+            echo 'browsable = yes' >> /etc/samba/smb.conf 
+            echo 'public = yes' >> /etc/samba/smb.conf 
+            echo 'writable = yes' >> /etc/samba/smb.conf
+            # Restart SMB service
+            sudo service smbd restart
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-${EnvironmentType}
+        - Key: environment-type
+          Value: !Ref EnvironmentType
+
+Outputs:
+  EC2JenkinsInstancePrivateIp:
+    Description: The private ip of this instance
+    Value: !GetAtt EC2JenkinsInstance.PrivateIp
+  EC2JenkinsInstancePublicIp:
+    Description: The public ip of this instance
+    Value: !GetAtt EC2JenkinsInstance.PublicIp
